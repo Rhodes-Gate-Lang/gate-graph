@@ -1,3 +1,6 @@
+.gradle/
+build/
+
 # Compiled class file
 *.class
 
@@ -12,6 +15,7 @@
 
 # Package Files #
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 *.nar
 *.ear
