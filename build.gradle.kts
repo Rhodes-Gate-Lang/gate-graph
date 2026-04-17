@@ -5,6 +5,7 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 plugins {
     application
     java
+    id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
 group = "com.rhodesgatelang"
@@ -50,10 +51,16 @@ java {
     }
 }
 
+javafx {
+    version = "17"
+    modules = listOf("javafx.controls", "javafx.web", "javafx.fxml")
+}
+
 application {
-    mainClass = "com.rhodesgatelang.gategraph.GateoSmoke"
+    mainClass = "com.rhodesgatelang.gategraph.GateGraphApp"
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    dependsOn(downloadGateoJava)
     options.encoding = "UTF-8"
 }

@@ -15,7 +15,7 @@ public final class GateoSmoke {
     Path path =
         args.length > 0
             ? Path.of(args[0])
-            : Path.of("..", "FullAdder.gateo").normalize().toAbsolutePath();
+            : Path.of(".", "FullAdder.gateo").normalize().toAbsolutePath();
 
     GateObject go = Gateo.read(path);
 
