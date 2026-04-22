@@ -17,36 +17,25 @@ public final class MermaidGenerator {
         List<Node> nodes = go.nodes();
         List<ComponentInstance> components = go.components();
 
-        // Group node indices by their parent component index
-        Map<Integer, List<Integer>> byComponent = new LinkedHashMap<>();
+        // componentChildren[i] = list of component indices whose parent is i
+        Map<Integer, List<Integer>> componentChildren = new LinkedHashMap<>();
+        for (int i = 1; i < components.size(); i++) {   // skip root (index 0)
+            int parent = components.get(i).parent();
+            componentChildren.computeIfAbsent(parent, k -> new ArrayList<>()).add(i);
+        }
+
+        // nodesByComponent[i] = list of node indices whose parent component is i
+        Map<Integer, List<Integer>> nodesByComponent = new LinkedHashMap<>();
         for (int i = 0; i < nodes.size(); i++) {
-            int compIdx = nodes.get(i).parent();
-            byComponent
-                .computeIfAbsent(compIdx, k -> new ArrayList<>())
-                .add(i);
+            int ci = nodes.get(i).parent();
+            nodesByComponent.computeIfAbsent(ci, k -> new ArrayList<>()).add(i);
         }
 
-        StringBuilder sb = new StringBuilder();   // created OUTSIDE the loops
-        sb.append("flowchart TD\n\n");            // lowercase 'f' required by Mermaid
+        StringBuilder sb = new StringBuilder();
+        sb.append("flowchart TD\n\n");
 
-        // One subgraph per component
-        for (Map.Entry<Integer, List<Integer>> entry : byComponent.entrySet()) {
-            int ci = entry.getKey();
-            String compName = (ci < components.size())
-                ? components.get(ci).name()       // fixed typo: components, not comonents
-                : "component_" + ci;
-
-            sb.append("  subgraph comp_").append(ci)
-              .append(" [\"").append(escapeMermaidLabel(compName)).append("\"]\n");
-
-            for (int ni : entry.getValue()) {
-                sb.append("    ")
-                  .append(nodeDeclaration(ni, nodes.get(ni)))
-                  .append("\n");
-            }
-
-            sb.append("  end\n\n");
-        }
+        // Recursively emit nested subgraphs starting from the root
+        emitSubgraph(sb, 0, components, componentChildren, nodesByComponent, nodes, "  ");
 
         // All edges AFTER subgraphs
         for (int i = 0; i < nodes.size(); i++) {
@@ -58,6 +47,31 @@ public final class MermaidGenerator {
         }
 
         return sb.toString();
+    }
+
+    private static void emitSubgraph(StringBuilder sb, int ci,
+                                     List<ComponentInstance> components,
+                                     Map<Integer, List<Integer>> children,
+                                     Map<Integer, List<Integer>> nodesByComponent,
+                                     List<Node> nodes,
+                                     String indent) {
+        String compName = components.get(ci).name();
+        sb.append(indent).append("subgraph comp_").append(ci)
+          .append(" [\"").append(escapeMermaidLabel(compName)).append("\"]\n");
+
+        // Emit this component's own nodes
+        for (int ni : nodesByComponent.getOrDefault(ci, List.of())) {
+            sb.append(indent).append("  ")
+              .append(nodeDeclaration(ni, nodes.get(ni)))
+              .append("\n");
+        }
+
+        // Recurse into child components
+        for (int childIdx : children.getOrDefault(ci, List.of())) {
+            emitSubgraph(sb, childIdx, components, children, nodesByComponent, nodes, indent + "  ");
+        }
+
+        sb.append(indent).append("end\n");
     }
 
     private static String nodeDeclaration(int index, Node node) {
