@@ -34,10 +34,19 @@ public final class MermaidGenerator {
         StringBuilder sb = new StringBuilder();
         sb.append("flowchart TD\n\n");
 
+        // Color code gates by type
+        sb.append("  classDef input   fill:#2d5a3d,stroke:#4ade80,color:#e6ffe6;\n");
+        sb.append("  classDef output  fill:#5a3d2d,stroke:#fb923c,color:#fff1e6;\n");
+        sb.append("  classDef andGate fill:#1e3a5f,stroke:#60a5fa,color:#e6f0ff;\n");
+        sb.append("  classDef orGate  fill:#3d2d5a,stroke:#a78bfa,color:#f0e6ff;\n");
+        sb.append("  classDef xorGate fill:#2d5a5a,stroke:#22d3ee,color:#e6ffff;\n");
+        sb.append("  classDef notGate fill:#5a5a2d,stroke:#eab308,color:#ffffe6;\n");
+        sb.append("  classDef literal fill:#3a3a3a,stroke:#9ca3af,color:#f0f0f0;\n\n");
+
         // Recursively emit nested subgraphs starting from the root
         emitSubgraph(sb, 0, components, componentChildren, nodesByComponent, nodes, "  ");
 
-        // All edges AFTER subgraphs
+        // All edges after subgraphs
         for (int i = 0; i < nodes.size(); i++) {
             for (int inputIdx : nodes.get(i).inputs()) {
                 sb.append("  n").append(inputIdx)
@@ -78,21 +87,23 @@ public final class MermaidGenerator {
         String id = "n" + index;
         String label = escapeMermaidLabel(nodeLabel(node));
 
-        // GateType is the correct enum name (not NodeType)
-        if (node.type() == GateType.INPUT || node.type() == GateType.OUTPUT) {
-            return id + "([" + label + "])";   // pill shape
+        // Shape and color tag per gate type
+        if (node.type() == GateType.INPUT) {
+            return id + "([" + label + "]):::input";
+        } else if (node.type() == GateType.OUTPUT) {
+            return id + "([" + label + "]):::output";
         } else if (node.type() == GateType.AND) {
-            return id + "[" + label + "]";     // rectangle
+            return id + "[" + label + "]:::andGate";
         } else if (node.type() == GateType.OR) {
-            return id + "(" + label + ")";     // rounded rect
+            return id + "(" + label + "):::orGate";
         } else if (node.type() == GateType.XOR) {
-            return id + "{{" + label + "}}";   // hexagon
+            return id + "{{" + label + "}}:::xorGate";
         } else if (node.type() == GateType.NOT) {
-            return id + "[/" + label + "/]";   // parallelogram
+            return id + "[/" + label + "/]:::notGate";
         } else if (node.type() == GateType.LITERAL) {
-            return id + "((" + label + "))";   // circle
+            return id + "((" + label + ")):::literal";
         } else {
-            return id + "[" + label + "]";     // rectangle fallback
+            return id + "[" + label + "]";
         }
     }
 

@@ -1,5 +1,10 @@
+.DS_Store
+
 .gradle/
 build/
+
+# Claude Code working directory
+.claude/
 
 # Compiled class file
 *.class
