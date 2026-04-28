@@ -32,8 +32,9 @@ The default in [`GateoSmoke`](src/main/java/com/rhodesgatelang/gategraph/GateoSm
 
 Keyboard Shortcuts:
 
-`Ctrl` + `O`                # open file
-`Ctrl` + `K`                # Collapse components
+`Ctrl` + `O` to open file
+
+`Ctrl` + `K` to collapse components
 
 ## Using `GateObject` in code
 
