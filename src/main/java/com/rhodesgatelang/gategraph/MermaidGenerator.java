@@ -1,19 +1,25 @@
 package com.rhodesgatelang.gategraph;
 
-import com.rhodesgatelang.gateo.v2.ComponentInstance;
-import com.rhodesgatelang.gateo.v2.GateObject;
-import com.rhodesgatelang.gateo.v2.GateType;
-import com.rhodesgatelang.gateo.v2.Node;
+import com.rhodesgatelang.gateo.v3.ComponentInstance;
+import com.rhodesgatelang.gateo.v3.GateObject;
+import com.rhodesgatelang.gateo.v3.GateType;
+import com.rhodesgatelang.gateo.v3.Node;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class MermaidGenerator {
 
     private MermaidGenerator() {}   // closed immediately — no body needed
 
     public static String generate(GateObject go) {
+        return generate(go, false);
+    }
+
+    public static String generate(GateObject go, boolean collapsed) {
         List<Node> nodes = go.nodes();
         List<ComponentInstance> components = go.components();
 
@@ -41,21 +47,50 @@ public final class MermaidGenerator {
         sb.append("  classDef orGate  fill:#3d2d5a,stroke:#a78bfa,color:#f0e6ff;\n");
         sb.append("  classDef xorGate fill:#2d5a5a,stroke:#22d3ee,color:#e6ffff;\n");
         sb.append("  classDef notGate fill:#5a5a2d,stroke:#eab308,color:#ffffe6;\n");
-        sb.append("  classDef literal fill:#3a3a3a,stroke:#9ca3af,color:#f0f0f0;\n\n");
+        sb.append("  classDef literal fill:#3a3a3a,stroke:#9ca3af,color:#f0f0f0;\n");
+        sb.append("  classDef component fill:#1a4d4d,stroke:#5eead4,color:#ffffff,stroke-width:2px;\n\n");
 
         // Recursively emit nested subgraphs starting from the root
-        emitSubgraph(sb, 0, components, componentChildren, nodesByComponent, nodes, "  ");
+        emitSubgraph(sb, 0, components, componentChildren, nodesByComponent, nodes, "  ", collapsed);
 
-        // All edges after subgraphs
+        // All edges after subgraphs.
+        // When collapsed, internal edges (within one collapsed block) are dropped
+        // and cross-boundary edges are remapped to point at the block.
+        Set<String> emittedEdges = new LinkedHashSet<>();
         for (int i = 0; i < nodes.size(); i++) {
+            String dst = representativeId(i, nodes, components, collapsed);
             for (int inputIdx : nodes.get(i).inputs()) {
-                sb.append("  n").append(inputIdx)
-                  .append(" --> n").append(i)
-                  .append("\n");
+                String src = representativeId(inputIdx, nodes, components, collapsed);
+                if (src.equals(dst)) continue;          // internal — hidden by collapse
+                emittedEdges.add(src + " --> " + dst);
             }
+        }
+        for (String edge : emittedEdges) {
+            sb.append("  ").append(edge).append("\n");
         }
 
         return sb.toString();
+    }
+
+    /**
+     * The Mermaid id this node should be drawn as. When {@code collapsed} is true,
+     * any node living inside a non-root component is replaced by its top-level
+     * component block ({@code comp_<idx>}). Otherwise it's just {@code n<idx>}.
+     */
+    private static String representativeId(int nodeIdx,
+                                           List<Node> nodes,
+                                           List<ComponentInstance> components,
+                                           boolean collapsed) {
+        int ci = nodes.get(nodeIdx).parent();
+        if (!collapsed || ci == 0) {
+            return "n" + nodeIdx;
+        }
+        // Walk up until the parent is the root (0). That ancestor is the
+        // outermost non-root component containing this node.
+        while (components.get(ci).parent() != 0) {
+            ci = components.get(ci).parent();
+        }
+        return "comp_" + ci;
     }
 
     private static void emitSubgraph(StringBuilder sb, int ci,
@@ -63,7 +98,8 @@ public final class MermaidGenerator {
                                      Map<Integer, List<Integer>> children,
                                      Map<Integer, List<Integer>> nodesByComponent,
                                      List<Node> nodes,
-                                     String indent) {
+                                     String indent,
+                                     boolean collapsed) {
         String compName = components.get(ci).name();
         sb.append(indent).append("subgraph comp_").append(ci)
           .append(" [\"").append(escapeMermaidLabel(compName)).append("\"]\n");
@@ -75,9 +111,20 @@ public final class MermaidGenerator {
               .append("\n");
         }
 
-        // Recurse into child components
+        // Children: in collapsed mode (only when this is the root) emit each
+        // child component as a single block node. Otherwise recurse.
         for (int childIdx : children.getOrDefault(ci, List.of())) {
-            emitSubgraph(sb, childIdx, components, children, nodesByComponent, nodes, indent + "  ");
+            if (collapsed && ci == 0) {
+                String childName = components.get(childIdx).name();
+                sb.append(indent).append("  ")
+                  .append("comp_").append(childIdx)
+                  .append("[\"").append(escapeMermaidLabel(childName)).append("\"]")
+                  .append(":::component")
+                  .append("\n");
+            } else {
+                emitSubgraph(sb, childIdx, components, children, nodesByComponent, nodes,
+                             indent + "  ", collapsed);
+            }
         }
 
         sb.append(indent).append("end\n");
@@ -85,7 +132,9 @@ public final class MermaidGenerator {
 
     private static String nodeDeclaration(int index, Node node) {
         String id = "n" + index;
-        String label = escapeMermaidLabel(nodeLabel(node));
+        // Always wrap in quotes so labels can safely contain '[', ']', '(', ')',
+        // '{', '}', '/', etc. — needed for multi-bit names like "a[4]".
+        String label = "\"" + escapeMermaidLabel(nodeLabel(node)) + "\"";
 
         // Shape and color tag per gate type
         if (node.type() == GateType.INPUT) {
@@ -102,6 +151,14 @@ public final class MermaidGenerator {
             return id + "[/" + label + "/]:::notGate";
         } else if (node.type() == GateType.LITERAL) {
             return id + "((" + label + ")):::literal";
+        } else if (node.type() == GateType.SPLIT) {
+            return id + "((" + label + ")):::split";
+        } else if (node.type() == GateType.MERGE) {
+            return id + "((" + label + ")):::merge";
+        } else if (node.type() == GateType.LSL) {
+            return id + "((" + label + ")):::lsl";
+        } else if (node.type() == GateType.LSR) {
+            return id + "((" + label + ")):::lsr";
         } else {
             return id + "[" + label + "]";
         }
@@ -116,8 +173,8 @@ public final class MermaidGenerator {
                 return base;
             }
         } else if (node.type() == GateType.LITERAL) {
-            if (node.literalValue().isPresent()) {
-                return Long.toString(node.literalValue().getAsLong());
+            if (node.value().isPresent()) {
+                return Long.toString(node.value().getAsLong());
             } else {
                 return "lit";
             }

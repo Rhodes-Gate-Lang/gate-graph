@@ -1,9 +1,9 @@
 package com.rhodesgatelang.gategraph;
 
 import com.rhodesgatelang.gateo.Gateo;
-import com.rhodesgatelang.gateo.v2.ComponentInstance;
-import com.rhodesgatelang.gateo.v2.GateObject;
-import com.rhodesgatelang.gateo.v2.Node;
+import com.rhodesgatelang.gateo.v3.ComponentInstance;
+import com.rhodesgatelang.gateo.v3.GateObject;
+import com.rhodesgatelang.gateo.v3.Node;
 import java.nio.file.Path;
 
 /**
@@ -45,7 +45,7 @@ public final class GateoSmoke {
               + " name="
               + n.name()
               + " literal="
-              + n.literalValue());
+              + n.value());
     }
     if (go.nodes().size() > limit) {
       System.out.println("  ... (" + (go.nodes().size() - limit) + " more nodes)");

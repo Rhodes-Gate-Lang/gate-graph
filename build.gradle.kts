@@ -15,7 +15,7 @@ repositories {
     mavenCentral()
 }
 
-val gateoJavaVersion = "2.0.2"
+val gateoJavaVersion = "3.0.0"
 val gateoJavaJar =
     layout.buildDirectory
         .dir("gateo-release")

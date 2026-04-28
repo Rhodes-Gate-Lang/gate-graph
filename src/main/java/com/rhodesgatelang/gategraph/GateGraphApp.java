@@ -1,9 +1,10 @@
 package com.rhodesgatelang.gategraph;
 
 import com.rhodesgatelang.gateo.Gateo;
-import com.rhodesgatelang.gateo.v2.GateObject;
+import com.rhodesgatelang.gateo.v3.GateObject;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
@@ -24,6 +25,12 @@ public final class GateGraphApp extends Application {
     private String mermaidJsContent;   // inlined into the HTML
     private WebView webView;
     private Stage primaryStage;
+
+    // Remember the most recently loaded gate object + filename so we can re-render
+    // when the user toggles collapse without re-opening the file.
+    private GateObject currentGate;
+    private String currentFilename;
+    private boolean collapseComponents = false;
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -93,7 +100,32 @@ public final class GateGraphApp extends Application {
 
         Menu fileMenu = new Menu("File");
         fileMenu.getItems().addAll(openItem, new SeparatorMenuItem(), exitItem);
-        return new MenuBar(fileMenu);
+
+        // View > Collapse Components — checkable; toggles between the nested
+        // schematic view and the chip-style block view.
+        CheckMenuItem collapseItem = new CheckMenuItem("Collapse Components");
+        collapseItem.setAccelerator(KeyCombination.keyCombination("Ctrl+K"));
+        collapseItem.setSelected(collapseComponents);
+        collapseItem.setOnAction(e -> {
+            collapseComponents = collapseItem.isSelected();
+            rerenderCurrent();
+        });
+
+        Menu viewMenu = new Menu("View");
+        viewMenu.getItems().add(collapseItem);
+
+        return new MenuBar(fileMenu, viewMenu);
+    }
+
+    /** Re-render the currently loaded gate object using the latest toggle state. */
+    private void rerenderCurrent() {
+        if (currentGate == null) return;   // nothing loaded yet
+        try {
+            String mermaid = MermaidGenerator.generate(currentGate, collapseComponents);
+            renderMermaid(mermaid);
+        } catch (Exception ex) {
+            renderError(currentFilename == null ? "render" : currentFilename, ex.getMessage());
+        }
     }
 
     private void openFile() {
@@ -108,7 +140,9 @@ public final class GateGraphApp extends Application {
 
         try {
             GateObject go = Gateo.read(selected.toPath());
-            String mermaid = MermaidGenerator.generate(go);
+            currentGate = go;
+            currentFilename = selected.getName();
+            String mermaid = MermaidGenerator.generate(go, collapseComponents);
             renderMermaid(mermaid);
             primaryStage.setTitle("Gate Graph Viewer — " + selected.getName());
         } catch (Exception ex) {
