@@ -30,11 +30,11 @@ The default in [`GateoSmoke`](src/main/java/com/rhodesgatelang/gategraph/GateoSm
 
 ## Gate-Graph GUI
 
-Keyboard Shortcuts:
+Controls:
 
-`Ctrl` + `O` to open file
-
-`Ctrl` + `K` to collapse components
+- **File › Open…** (`Ctrl` + `O`) — load a `.gateo` file via a file picker
+- **File › Exit** — quit the app
+- **View › Collapse Components** (`Ctrl` + `K`) — toggle hierarchical collapse that folds top-level components into blocks
 
 ## Using `GateObject` in code
 
