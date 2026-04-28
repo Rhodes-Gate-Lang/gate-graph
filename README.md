@@ -28,6 +28,13 @@ To try another **`.gateo`** path without editing code:
 
 The default in [`GateoSmoke`](src/main/java/com/rhodesgatelang/gategraph/GateoSmoke.java) is `../FullAdder.gateo` relative to the project directory (the file in the parent **gate-lang** checkout).
 
+## Gate-Graph GUI
+
+Keyboard Shortcuts:
+
+`Ctrl` + `O`                # open file
+`Ctrl` + `K`                # Collapse components
+
 ## Using `GateObject` in code
 
 Use the **`com.rhodesgatelang.gateo`** facade for I/O and **`com.rhodesgatelang.gateo.v3`** for the immutable graph model.
