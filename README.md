@@ -30,13 +30,13 @@ The default in [`GateoSmoke`](src/main/java/com/rhodesgatelang/gategraph/GateoSm
 
 ## Using `GateObject` in code
 
-Use the **`com.rhodesgatelang.gateo`** facade for I/O and **`com.rhodesgatelang.gateo.v2`** for the immutable graph model.
+Use the **`com.rhodesgatelang.gateo`** facade for I/O and **`com.rhodesgatelang.gateo.v3`** for the immutable graph model.
 
 ### Reading and writing
 
 ```java
 import com.rhodesgatelang.gateo.Gateo;
-import com.rhodesgatelang.gateo.v2.GateObject;
+import com.rhodesgatelang.gateo.v3.GateObject;
 import java.nio.file.Path;
 
 Path file = Path.of("design.gateo");
